@@ -1,5 +1,3 @@
-import styles from './styles.module.css';
-
 type DefaultInputProps = {
   id: string;
   labelText: string;

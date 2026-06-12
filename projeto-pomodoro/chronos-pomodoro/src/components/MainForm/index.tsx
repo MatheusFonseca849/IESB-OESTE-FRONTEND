@@ -1,33 +1,103 @@
-import { PlayCircleIcon } from 'lucide-react';
+import { PlayCircleIcon, StopCircleIcon } from 'lucide-react';
 import Cycles from '../Cycles';
 import DefaultButton from '../DefaultButton';
 import DefaultInput from '../DefaultInput';
+import { useRef } from 'react';
+import type { TaskModel } from '../../models/TaskModel';
+import { useTaskContext } from '../../contexts/TaskContext/useTaskContext';
+import { getNextCycle } from '../../utils/getNextCycle';
+import { getNextCycleType } from '../../utils/getNextCycleType';
+import { TaskActionTypes } from '../../contexts/TaskContext/TaskActions';
+import { Tips } from '../Tips';
 
-function MainForm() {
-  return (
-    <form className='form' action=''>
-      <div className='formRow'>
-        <DefaultInput
-          labelText='task'
-          id='meuInput'
-          type='text'
-          placeholder='Digite algo'
-        />
-      </div>
+export default function MainForm() {
+    const { state, dispatch } = useTaskContext();
+    const taskNameInput = useRef<HTMLInputElement>(null);
 
-      <div className='formRow'>
-        <p>Lorem ipsum dolor sit amet.</p>
-      </div>
+    function handleCreateNewTask(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
 
-      <div className='formRow'>
-        <Cycles />
-      </div>
+        if (taskNameInput.current === null) return;
 
-      <div className='formRow'>
-        <DefaultButton icon={<PlayCircleIcon />} />
-      </div>
-    </form>
-  );
+        const taskName = taskNameInput.current.value.trim();
+
+        if (!taskName) {
+            alert('Digite o nome da tarefa');
+            return;
+        }
+
+        const nextCycle = getNextCycle(state.currentCycle);
+        const nextCyleType = getNextCycleType(nextCycle);
+
+        const newTask: TaskModel = {
+            id: Date.now().toString(),
+            name: taskName,
+            startDate: Date.now(),
+            completeDate: null,
+            interruptDate: null,
+            duration: state.config[nextCyleType],
+            type: nextCyleType,
+        };
+
+        dispatch({ type: TaskActionTypes.START_TASK, payload: newTask });
+    }
+
+    function handleInterruptTask() {
+        // Disparamos a ação sem payload!
+        dispatch({ type: TaskActionTypes.INTERRUPT_TASK });
+    }
+
+    return (
+        <form onSubmit={handleCreateNewTask} className='form' action=''>
+            <div className='formRow'>
+                <DefaultInput
+                    labelText='task'
+                    id='meuInput'
+                    type='text'
+                    placeholder='Digite algo'
+                    ref={taskNameInput}
+                    disabled={!!state.activeTask}
+                />
+            </div>
+
+            <div className='formRow'>
+                <Tips />
+            </div>
+
+            {
+                state.currentCycle > 0 && (
+                    <div className='formRow'>
+                        <Cycles />
+                    </div>
+                )
+            }
+
+            <div className='formRow'>
+                <div className='formRow'>
+                    {/* Renderiza apenas se NÃO houver tarefa ativa */}
+                    {!state.activeTask && (
+                        <DefaultButton
+                            aria-label='Iniciar nova tarefa'
+                            title='Iniciar nova tarefa'
+                            type='submit'
+                            icon={<PlayCircleIcon />}
+                        />
+                    )}
+
+                    {/* Renderiza apenas se HOUVER tarefa ativa */}
+                    {!!state.activeTask && (
+                        <DefaultButton
+                            aria-label='Interromper tarefa atual'
+                            title='Interromper tarefa atual'
+                            type='button'
+                            color='red'
+                            icon={<StopCircleIcon />}
+                            onClick={handleInterruptTask}
+                            key='botao_button' // A chave mágica que evita a confusão do React!
+                        />
+                    )}
+                </div>
+            </div>
+        </form>
+    );
 }
-
-export default MainForm;
